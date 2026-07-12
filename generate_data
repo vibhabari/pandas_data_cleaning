@@ -1,0 +1,163 @@
+
+#STEP 1: GENERATE FAKE DATA
+
+import csv
+import random
+from datetime import datetime, timedelta
+
+random.seed(42)
+
+NUM_CUSTOMERS = 500
+NUM_ORDERS = 500
+NUM_PRODUCTS = 600
+NUM_ORDER_ITEMS = 500
+
+CATEGORIES = {
+    "Electronics": ["Mobiles", "Laptops", "Headphones"],
+    "Clothing": ["Men", "Women", "Kids"],
+    "Home": ["Kitchen", "Furniture", "Decor"],
+    "Books": ["Fiction", "Non-Fiction", "Comics"],
+}
+STATUSES = ["PLACED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"]
+CUSTOMER_TYPES = ["REGULAR", "PREMIUM", "VIP"]
+
+
+def random_date(start_year=2023, end_year=2025):
+    #Return a random datetime between start_year and end_year.
+    start = datetime(start_year, 1, 1)
+    end = datetime(end_year, 12, 31)
+    delta_days = (end - start).days
+    random_days = random.randint(0, delta_days)
+    random_seconds = random.randint(0, 86399)
+    return start + timedelta(days=random_days, seconds=random_seconds)
+
+
+def generate_customers():
+    rows = []
+    for i in range(1, NUM_CUSTOMERS + 1):
+        customer_id = i
+        name = f"Customer {i}"
+        email = f"customer{i}@example.com"
+
+        if random.random() < 0.02:
+            choice = random.choice(["no_at", "no_domain"])
+            if choice == "no_at":
+                email = f"customer{i}example.com"       
+            else:
+                email = f"customer{i}@"                  
+
+        registration_date = random_date(2022, 2025).strftime("%Y-%m-%d")
+        customer_type = random.choice(CUSTOMER_TYPES)
+
+        rows.append([customer_id, name, email, registration_date, customer_type])
+
+    with open("customers.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["customer_id", "customer_name", "email", "registration_date", "customer_type"])
+        writer.writerows(rows)
+
+    return [row[0] for row in rows]  
+
+
+def generate_products():
+    rows = []
+    for i in range(1, NUM_PRODUCTS + 1):
+        product_id = i
+        category = random.choice(list(CATEGORIES.keys()))
+        subcategory = random.choice(CATEGORIES[category])
+        product_name = f"{subcategory} Product {i}"
+
+        if random.random() < 0.15:
+            choice = random.choice(["spaces", "case"])
+            if choice == "spaces":
+                product_name = f"   {product_name}   "
+            else:
+                product_name = product_name.upper()
+
+        cost_price = round(random.uniform(50, 5000), 2)
+        rows.append([product_id, product_name, category, subcategory, cost_price])
+
+    with open("products.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["product_id", "product_name", "category", "subcategory", "cost_price"])
+        writer.writerows(rows)
+
+    return [row[0] for row in rows]  
+
+
+def generate_orders(customer_ids):
+    rows = []
+    order_ids = []
+
+    for i in range(1, NUM_ORDERS + 1):
+        order_id = i
+        order_ids.append(order_id)
+
+
+        if random.random() < 0.05:
+            customer_id = ""  
+        else:
+            customer_id = random.choice(customer_ids)
+
+        order_date = random_date(2023, 2025)
+
+        if random.random() < 0.10:
+            order_date_str = order_date.strftime("%d-%m-%Y")
+        else:
+            order_date_str = order_date.strftime("%Y-%m-%d %H:%M:%S")
+
+        status = random.choice(STATUSES)
+        region_code = random.choice(["NORTH", "SOUTH", "EAST", "WEST"])
+
+        rows.append([order_id, customer_id, order_date_str, status, region_code])
+
+    with open("orders.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["order_id", "customer_id", "order_date", "status", "region_code"])
+        writer.writerows(rows)
+
+    return order_ids
+
+
+def generate_order_items(order_ids, product_ids):
+    rows = []
+    for i in range(1, NUM_ORDER_ITEMS + 1):
+        item_id = i
+        # Only pick order_ids that really exist in orders.csv.
+        order_id = random.choice(order_ids)
+        product_id = random.choice(product_ids)
+
+        quantity = random.randint(1, 5)
+        
+        if random.random() < 0.03:
+            quantity = -quantity
+
+        unit_price = round(random.uniform(100, 3000), 2)
+        discount_percent = round(random.uniform(0, 100), 2)
+
+        rows.append([item_id, order_id, product_id, quantity, unit_price, discount_percent])
+
+    with open("order_items.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["item_id", "order_id", "product_id", "quantity", "unit_price", "discount_percent"])
+        writer.writerows(rows)
+
+
+def main():
+    print("customers.csv")
+    customer_ids = generate_customers()
+
+    print("products.csv")
+    product_ids = generate_products()
+
+    print("orders.csv")
+    order_ids = generate_orders(customer_ids)
+
+    print("order_items.csv")
+    generate_order_items(order_ids, product_ids)
+
+    print("Done! 4 CSV files created:")
+   
+
+if __name__ == "__main__":
+    main()
