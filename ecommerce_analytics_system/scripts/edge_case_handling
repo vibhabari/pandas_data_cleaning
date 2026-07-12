@@ -1,0 +1,91 @@
+import sqlite3
+
+# Connect to SQLite Database
+conn = sqlite3.connect("ecommerce.db")
+cursor = conn.cursor()
+
+# ----------------------------
+# Test 1: Invalid Order ID
+# ----------------------------
+
+print("\nTest 1: Invalid Order ID")
+
+cursor.execute("""
+SELECT *
+FROM clean_order_items
+WHERE order_id NOT IN
+(SELECT order_id
+FROM clean_orders);""")
+
+rows = cursor.fetchall()
+
+if rows:
+    print("Invalid Order IDs Found")
+    print("Total:", len(rows))
+else:
+    print("No Invalid Order IDs")
+
+
+# Test 2: Discount Greater Than 100
+
+
+print("\nTest 2: Discount > 100")
+
+cursor.execute("""
+SELECT *
+FROM clean_order_items
+WHERE discount_percent > 100;
+""")
+
+rows = cursor.fetchall()
+
+if rows:
+    print("Invalid Discount Found")
+    print("Total:", len(rows))
+else:
+    print("No Invalid Discount")
+
+
+# ----------------------------
+# Test 3: Quantity = 0
+# ----------------------------
+
+print("\nTest 3: Quantity = 0")
+
+cursor.execute("""
+SELECT *
+FROM clean_order_items
+WHERE quantity = 0;
+""")
+
+rows = cursor.fetchall()
+
+if rows:
+    print("Zero Quantity Found")
+    print("Total:", len(rows))
+else:
+    print("No Zero Quantity")
+
+
+# ----------------------------
+# Test 4: Future Order Date
+# ----------------------------
+
+print("\nTest 4: Future Order Date")
+
+cursor.execute("""
+SELECT *
+FROM clean_orders
+WHERE DATE(order_date) > DATE('now');
+""")
+
+rows = cursor.fetchall()
+
+if rows:
+    print("Future Orders Found")
+    print("Total:", len(rows))
+else:
+    print("No Future Orders")
+
+
+conn.close()

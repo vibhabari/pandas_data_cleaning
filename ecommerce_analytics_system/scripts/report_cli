@@ -1,0 +1,117 @@
+
+import sqlite3
+from datetime import datetime, timedelta
+
+# Connect to SQLite Database
+conn = sqlite3.connect("ecommerce.db")
+cursor = conn.cursor()
+
+# User Input
+report_type = input("Enter Report Type (daily/weekly/monthly): ")
+start_date = input("Enter Start Date (YYYY-MM-DD): ")
+end_date = input("Enter End Date (YYYY-MM-DD): ")
+
+# Current Period Summary
+
+
+cursor.execute("""
+SELECT COUNT(DISTINCT o.order_id), SUM(oi.quantity * oi.unit_price * (1 - oi.discount_percent/100.0)),COUNT(DISTINCT o.customer_id)
+FROM clean_orders o
+
+JOIN clean_order_items oi
+ON o.order_id = oi.order_id
+
+WHERE DATE(o.order_date)
+BETWEEN ? AND ?
+AND oi.quantity > 0;
+""", (start_date, end_date))
+
+result = cursor.fetchone()
+
+total_orders = result[0]
+total_revenue = result[1] if result[1] else 0
+unique_customers = result[2]
+
+
+# Top 3 Products
+
+cursor.execute("""
+SELECT p.product_name,SUM(oi.quantity) AS total_quantity
+FROM clean_order_items oi
+
+JOIN clean_products p ON oi.product_id = p.product_id
+
+JOIN clean_orders o ON oi.order_id = o.order_id
+WHERE DATE(o.order_date) BETWEEN ? AND ?
+GROUP BY p.product_name
+
+ORDER BY total_quantity DESC
+
+LIMIT 3;
+""", (start_date, end_date))
+
+top_products = cursor.fetchall()
+
+
+# Previous Period Revenue
+
+
+start = datetime.strptime(start_date, "%Y-%m-%d")
+end = datetime.strptime(end_date, "%Y-%m-%d")
+
+days = (end - start).days + 1
+
+previous_end = start - timedelta(days=1)
+previous_start = previous_end - timedelta(days=days - 1)
+
+cursor.execute("""
+SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount_percent/100.0))
+FROM clean_orders o
+JOIN clean_order_items oi
+ON o.order_id = oi.order_id
+WHERE DATE(o.order_date)
+BETWEEN ? AND ?
+AND oi.quantity > 0;
+""", (previous_start.strftime("%Y-%m-%d"),
+      previous_end.strftime("%Y-%m-%d")))
+
+previous_revenue = cursor.fetchone()[0]
+
+if previous_revenue is None:
+    previous_revenue = 0
+
+# Percentage Change
+
+
+if previous_revenue == 0:
+    revenue_change = "N/A"
+else:
+    revenue_change = round( ((total_revenue - previous_revenue) / previous_revenue) * 100, 2)
+
+
+# Display Report
+
+
+print("\n==============================")
+print("      E-COMMERCE REPORT")
+print("==============================")
+
+print("Report Type :", report_type)
+print("Start Date  :", start_date)
+print("End Date    :", end_date)
+
+print("\nTotal Orders      :", total_orders)
+print("Total Revenue     :", round(total_revenue, 2))
+print("Unique Customers  :", unique_customers)
+
+print("\nTop 3 Products")
+
+for i, product in enumerate(top_products, start=1):
+    print(f"{i}. {product[0]} ({product[1]} units)")
+
+print("\nPrevious Period Revenue :", round(previous_revenue, 2))
+print("Revenue Change          :", revenue_change)
+
+print("==============================")
+
+conn.close()

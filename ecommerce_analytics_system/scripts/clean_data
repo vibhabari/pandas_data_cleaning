@@ -1,0 +1,142 @@
+# STEP 2: CLEAN THE DATA
+
+import pandas as pd
+
+
+# Clean Orders
+
+def clean_orders(orders_df):
+
+    # Fix mixed date formats
+    def fix_date(date):
+        try:
+            return pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S")
+        except:
+            try:
+                return pd.to_datetime(date, format="%d-%m-%Y")
+            except:
+                return pd.NaT
+
+    orders_df["order_date"] = orders_df["order_date"].apply(fix_date)
+
+    # Replace missing customer IDs
+    orders_df["customer_id"] = orders_df["customer_id"].replace("", pd.NA)
+
+    missing_count = orders_df["customer_id"].isna().sum()
+
+    orders_df["customer_id"] = orders_df["customer_id"].fillna("UNKNOWN")
+
+    print(f"Orders cleaned. Missing customer IDs fixed: {missing_count}")
+
+    return orders_df
+
+# Clean Products
+def clean_products(products_df):
+
+    products_df["product_name"] = products_df["product_name"].str.strip()
+
+    products_df["product_name"] = products_df["product_name"].str.title()
+
+    print("Product names cleaned.")
+
+    return products_df
+
+
+
+# Validate Emails
+
+def validate_emails(customers_df):
+
+    invalid_customers = []
+
+    for index, row in customers_df.iterrows():
+
+        email = str(row["email"])
+
+        if "@" not in email:
+            invalid_customers.append(row["customer_id"])
+
+        else:
+            domain = email.split("@")[1]
+
+            if "." not in domain:
+                invalid_customers.append(row["customer_id"])
+
+    print(f"Invalid emails found: {len(invalid_customers)}")
+
+    return invalid_customers
+
+
+
+# Check Referential Integrity
+
+def check_referential_integrity(orders_df, order_items_df):
+
+    valid_order_ids = set(orders_df["order_id"])
+
+    bad_rows = order_items_df[~order_items_df["order_id"].isin(valid_order_ids)]
+
+    print(f"Invalid order references found: {len(bad_rows)}")
+
+    return bad_rows
+
+
+def main():
+
+    # Read CSV Files
+    orders_df = pd.read_csv("orders.csv", dtype={"customer_id": "string"})
+    order_items_df = pd.read_csv("order_items.csv")
+    products_df = pd.read_csv("products.csv")
+    customers_df = pd.read_csv("customers.csv")
+
+    print("Cleaning Started...\n")
+
+    # Clean Data
+    orders_df = clean_orders(orders_df)
+    products_df = clean_products(products_df)
+
+    
+    invalid_emails = validate_emails(customers_df)
+
+    bad_order_items = check_referential_integrity( orders_df, order_items_df)
+
+    # Save Cleaned Files
+    orders_df.to_csv("clean_orders.csv", index=False)
+
+    products_df.to_csv("clean_products.csv", index=False)
+
+    customers_df.to_csv("clean_customers.csv", index=False)
+
+    order_items_df.to_csv("clean_order_items.csv", index=False)
+
+    # Create Report
+    with open("cleaning_report.txt", "w") as report:
+
+        report.write("DATA CLEANING REPORT\n")
+        report.write("=====================\n\n")
+
+        report.write(f"Total Orders : {len(orders_df)}\n")
+
+        report.write(
+            f"Missing Customer IDs : {(orders_df['customer_id']=='UNKNOWN').sum()}\n\n"
+        )
+
+        report.write(f"Total Customers : {len(customers_df)}\n")
+
+        report.write(f"Invalid Emails : {len(invalid_emails)}\n")
+
+        report.write(f"Customer IDs : {invalid_emails}\n\n")
+
+        report.write(f"Total Order Items : {len(order_items_df)}\n")
+
+        report.write(
+            f"Invalid Order References : {len(bad_order_items)}\n"
+        )
+
+    print("\nCleaning Completed")
+    print("Cleaned CSV files created.")
+    print("Cleaning report created.")
+
+
+if __name__ == "__main__":
+    main()
